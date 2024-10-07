@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const connectDB = require('./config/db');
-const authRoutes = require('./authUser/loginsignup');
+
 require('dotenv').config();
 
 // Initialize the Express app
@@ -106,7 +106,7 @@ app.post('/api/cancel-booking', async (req, res) => {
     }
 });
 
-app.use('/api/auth', authRoutes);
+
 
 // Start the server
 const PORT = process.env.PORT || 5000;
