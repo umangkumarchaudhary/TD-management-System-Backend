@@ -13,16 +13,17 @@ app.use(bodyParser.json());
 // Connect to MongoDB
 connectDB();
 
-// Define the booking schema and model
 const bookingSchema = new mongoose.Schema({
     date: { type: String, required: true },
     startTime: { type: String, required: true },
     endTime: { type: String, required: true },
     carModel: { type: String, required: true },
     consultantName: { type: String, required: true },
-    location: { type: String, required: true },  // Added location field
-    passkey: { type: String, required: true },   // Added passkey field
+    location: { type: String, required: true },
+    passkey: { type: String, required: true },
+    testDriveType: { type: String, required: true, enum: ['unique', 'repeated'] } // Use enum for valid values
 });
+
 
 const Booking = mongoose.model('Booking', bookingSchema);
 
@@ -38,7 +39,7 @@ app.get('/api/bookings', async (req, res) => {
 
 // Create a new booking
 app.post('/api/bookings', async (req, res) => {
-    const { date, startTime, endTime, carModel, consultantName, location, passkey } = req.body;
+    const { date, startTime, endTime, carModel, consultantName, location,testDriveType, passkey} = req.body;
 
     // Check if the car is already booked for the requested time
     try {
@@ -69,8 +70,10 @@ app.post('/api/bookings', async (req, res) => {
             carModel,
             consultantName,
             location,   // Save location
-            passkey     // Save passkey
+            passkey,    // Save passkey
+            testDriveType // Save testDriveType (unique or repeated)
         });
+        console.log('Submitting booking:', bookingData);
 
         await booking.save();
         res.status(201).json(booking);
@@ -78,6 +81,7 @@ app.post('/api/bookings', async (req, res) => {
         res.status(500).json({ message: 'Error submitting booking', error });
     }
 });
+
 
 // Cancel a booking
 // Cancel a booking

@@ -11,6 +11,8 @@
 # production
 /build
 
+/authUser
+/loginsignup.js
 # misc
 .DS_Store
 .env.local
