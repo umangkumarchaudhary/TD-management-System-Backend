@@ -2,8 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const connectDB = require('./config/db');
-
+const webpush = require('web-push');
 require('dotenv').config();
 
 // Initialize the Express app
@@ -12,6 +11,19 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // Connect to MongoDB
+const connectDB = async () => {
+    try {
+        await mongoose.connect(process.env.MONGO_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+        });
+        console.log('MongoDB connected');
+    } catch (err) {
+        console.error(err.message);
+        process.exit(1);
+    }
+};
+
 connectDB();
 
 // Define the booking schema and model
@@ -27,6 +39,42 @@ const bookingSchema = new mongoose.Schema({
 
 const Booking = mongoose.model('Booking', bookingSchema);
 
+// Push Notification Setup
+const vapidKeys = {
+    publicKey: 'BH2URV2TQMM_Q8nRvoW5Ic4lC_hZges1aCfkLf5V_cg1fDFUIraa3j3hccOAZ2bbfqoOvKENYgEzDM7m0tJBFbA',
+    privateKey: 'wpk8cjrmED6BlHQJua8Wm138-BJs_82sGD3Cr4Abw6g',
+};
+
+webpush.setVapidDetails(
+    'mailto:umangkumarchaudhary5@gmail.com',
+    vapidKeys.publicKey,
+    vapidKeys.privateKey
+);
+
+const subscriptions = []; // Store user subscriptions in a database in production
+
+// Push Notification Subscription Endpoint
+app.post('/api/subscribe', (req, res) => {
+    const subscription = req.body;
+    subscriptions.push(subscription); // Save subscription to a database in a real app
+    res.status(201).json({ message: 'Subscription received.' });
+});
+
+// Push Notification Sending Endpoint
+app.post('/api/notify', (req, res) => {
+    const payload = JSON.stringify({
+        title: 'New Notification',
+        body: 'This is a test notification!',
+    });
+
+    Promise.all(subscriptions.map(sub => webpush.sendNotification(sub, payload)))
+        .then(() => res.status(200).json({ message: 'Notifications sent.' }))
+        .catch(error => {
+            console.error('Error sending notification:', error);
+            res.sendStatus(500);
+        });
+});
+
 // Get all bookings
 app.get('/api/bookings', async (req, res) => {
     try {
@@ -41,8 +89,8 @@ app.get('/api/bookings', async (req, res) => {
 app.post('/api/bookings', async (req, res) => {
     const { date, startTime, endTime, carModel, consultantName, location, passkey } = req.body;
 
-    // Check if the car is already booked for the requested time
     try {
+        // Check if the car is already booked for the requested time
         const existingBooking = await Booking.findOne({
             carModel,
             date,
@@ -52,9 +100,9 @@ app.post('/api/bookings', async (req, res) => {
                 {
                     $and: [
                         { startTime: { $lte: startTime } },
-                        { endTime: { $gte: endTime } }
-                    ]
-                }
+                        { endTime: { $gte: endTime } },
+                    ],
+                },
             ],
         });
 
@@ -81,7 +129,6 @@ app.post('/api/bookings', async (req, res) => {
 });
 
 // Cancel a booking
-// Cancel a booking
 app.post('/api/cancel-booking', async (req, res) => {
     const { bookingId, passkey } = req.body; // bookingId is the MongoDB _id
 
@@ -105,8 +152,6 @@ app.post('/api/cancel-booking', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error canceling booking', error });
     }
 });
-
-
 
 // Start the server
 const PORT = process.env.PORT || 5000;
